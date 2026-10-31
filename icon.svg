@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3b82d6"/>
+      <stop offset="1" stop-color="#d8eefb"/>
+    </linearGradient>
+    <linearGradient id="cloud" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#b4c3d9"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="14" fill="url(#sky)"/>
+  <path d="M0 50c10-4 20-2 32-3s22-4 32-1v18H0Z" fill="#79a85a"/>
+  <path d="M8 34c0-5 4-9 9-9 1-5 6-9 11-9 5 0 9 3 11 7 1-1 3-1 4-1 5 0 9 4 9 9h0c3 0 5 2 5 5s-2 5-5 5H12c-3 0-5-2-5-4 0-1 0-2 1-3Z" fill="url(#cloud)"/>
+  <path d="M10 39c12 3 30 3 43-1" fill="none" stroke="#ff8a7a" stroke-width="2.6" stroke-linecap="round" opacity=".85"/>
+  <path d="M22 26c6-3 14-3 20 0" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" opacity=".7"/>
+</svg>
