@@ -14,6 +14,16 @@
   const DISCONNECT_GRACE = 30;
   const MAX_PLAYERS = 8;
 
+  // Weather tuning. Water is 0..1 per cloud; ground wetness is 0..1 per 20px strip of land.
+  const WATER_START = 0.6;
+  const SOAK_RATE = 0.15; // per second over the lake, at the lowest altitude
+  const RAIN_RATE = 0.11; // per second while raining (~9 s from full to empty)
+  const EMPTY = 0.02;
+  const CELL_W = 20;
+  const GROUND_CELLS = 1600 / CELL_W;
+  const WET_RATE = 0.45; // per second for a full-size cloud raining on a strip
+  const DRY_RATE = 0.012; // per second (~80 s to dry out completely)
+
   const COLORS = [
     { name: "Coral", hex: "#ff8a7a" },
     { name: "Sky", hex: "#6cbcff" },
@@ -57,7 +67,35 @@
         seed: Math.floor(rand() * 1e9),
       });
     }
-    return { t: 0, seed, players: new Map(), ambient, rand };
+    return { t: 0, seed, players: new Map(), ambient, rand, ground: new Array(GROUND_CELLS).fill(0) };
+  }
+
+  function sizeFor(water) {
+    return 0.5 + 0.65 * water;
+  }
+
+  function overLake(x) {
+    const lake = ZONES[0];
+    return x >= lake.x0 + 20 && x <= lake.x1 - 20;
+  }
+
+  function cellRange(x0, x1) {
+    return [Math.max(0, Math.floor(x0 / CELL_W)), Math.min(GROUND_CELLS - 1, Math.floor(x1 / CELL_W))];
+  }
+
+  function wetnessAt(world, x) {
+    const i = Math.floor(x / CELL_W);
+    return i >= 0 && i < GROUND_CELLS ? world.ground[i] : 0;
+  }
+
+  // Average wetness across a zone's strips; challenges will key off this.
+  function zoneWetness(world, zoneId) {
+    const z = ZONES.find((zz) => zz.id === zoneId);
+    if (!z) return 0;
+    const [a, b] = cellRange(z.x0, z.x1 - 1);
+    let sum = 0;
+    for (let i = a; i <= b; i++) sum += world.ground[i];
+    return sum / (b - a + 1);
   }
 
   function pickColor(world) {
@@ -103,6 +141,10 @@
       vy: 0,
       roll: world.rand() * Math.PI * 2,
       input: { x: 0, y: 0, rain: false },
+      water: WATER_START,
+      size: sizeFor(WATER_START),
+      raining: false,
+      soaking: false,
       connected: true,
       goneFor: 0,
       joinedAt: world.t,
@@ -165,6 +207,25 @@
       }
       // A roll cloud tumbles about its long axis as it moves.
       p.roll += (p.vx / 60 + 0.25) * dt;
+
+      const altitude = (p.y - SKY_TOP) / (SKY_BOTTOM - SKY_TOP); // 0 high … 1 low
+      p.soaking = overLake(p.x) && p.water < 1;
+      if (p.soaking) p.water = Math.min(1, p.water + SOAK_RATE * (0.4 + 0.6 * altitude) * dt);
+      p.raining = p.input.rain && p.water > EMPTY;
+      if (p.raining) {
+        p.water = Math.max(0, p.water - RAIN_RATE * dt);
+        if (!overLake(p.x)) {
+          const half = CLOUD_HALF_W * 0.85 * p.size;
+          const [a, b] = cellRange(p.x - half, p.x + half);
+          const wet = WET_RATE * p.size * dt;
+          for (let i = a; i <= b; i++) world.ground[i] = Math.min(1, world.ground[i] + wet);
+        }
+      }
+      p.size += (sizeFor(p.water) - p.size) * Math.min(1, 3 * dt);
+    }
+
+    for (let i = 0; i < GROUND_CELLS; i++) {
+      if (world.ground[i] > 0) world.ground[i] = Math.max(0, world.ground[i] - DRY_RATE * dt);
     }
 
     for (const a of world.ambient) {
@@ -186,6 +247,13 @@
     CLOUD_HALF_W,
     MAX_PLAYERS,
     DISCONNECT_GRACE,
+    WATER_START,
+    SOAK_RATE,
+    RAIN_RATE,
+    DRY_RATE,
+    EMPTY,
+    CELL_W,
+    GROUND_CELLS,
     COLORS,
     ZONES,
     rng,
@@ -196,6 +264,10 @@
     sanitizeInput,
     step,
     zoneAt,
+    overLake,
+    sizeFor,
+    wetnessAt,
+    zoneWetness,
   };
   root.Volutus = root.Volutus || {};
   root.Volutus.world = api;

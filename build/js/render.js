@@ -16,6 +16,7 @@
       cloudLit: "#ffffff", cloudMid: "#edf3fb", cloudShade: "#b4c3d9", ambientAlpha: 0.85,
       shadow: "rgba(18, 48, 24, 0.20)", rain: "rgba(150, 190, 240, 0.85)", stars: 0,
       tagBg: "rgba(255, 255, 255, 0.82)", tagInk: "#0f172a",
+      wet: "34, 62, 30", wetAlpha: 0.3, lush: "#4fae46", puddle: "#6fb3e3", vapor: "255, 255, 255",
     },
     twilight: {
       skyTop: "#251f52", skyMid: "#8a4c8c", skyHorizon: "#ffb27a",
@@ -27,6 +28,7 @@
       cloudLit: "#ffd9c4", cloudMid: "#e3a9bb", cloudShade: "#7a6a9c", ambientAlpha: 0.75,
       shadow: "rgba(20, 10, 40, 0.22)", rain: "rgba(220, 190, 240, 0.8)", stars: 0.35,
       tagBg: "rgba(40, 30, 70, 0.75)", tagInk: "#fbf7ff",
+      wet: "26, 24, 40", wetAlpha: 0.32, lush: "#5f8a4c", puddle: "#9a8ac0", vapor: "255, 222, 232",
     },
     night: {
       skyTop: "#040814", skyMid: "#0c1730", skyHorizon: "#22355c",
@@ -38,6 +40,7 @@
       cloudLit: "#9aa9cc", cloudMid: "#5e6f96", cloudShade: "#273352", ambientAlpha: 0.55,
       shadow: "rgba(0, 0, 0, 0.25)", rain: "rgba(150, 170, 220, 0.7)", stars: 0.9,
       tagBg: "rgba(10, 16, 32, 0.78)", tagInk: "#f1f5f9",
+      wet: "0, 4, 10", wetAlpha: 0.4, lush: "#1f4a2a", puddle: "#2f5288", vapor: "170, 190, 235",
     },
   };
 
@@ -82,7 +85,14 @@
     const stars = [];
     for (let i = 0; i < 140; i++) stars.push({ x: rand() * W, y: rand() * 520, r: 0.6 + rand() * 1.4, tw: rand() * Math.PI * 2 });
 
-    return { ridge, hills, fields, trees, houses, stars };
+    const puddles = [];
+    for (let i = 0; i < 60; i++) {
+      const x = 20 + rand() * (W - 40);
+      if (V.world.overLake(x) || (x > ZONES[0].x0 - 30 && x < ZONES[0].x1 + 30)) continue;
+      puddles.push({ x, y: 750 + rand() * 110, r: 10 + rand() * 18, t: 0.35 + rand() * 0.4 });
+    }
+
+    return { ridge, hills, fields, trees, houses, stars, puddles };
   }
 
   class Renderer {
@@ -92,6 +102,8 @@
       this.scenery = buildScenery();
       this.drops = [];
       this.splashes = [];
+      this.vapor = [];
+      this.vaporCarry = new Map();
       this.rainCarry = new Map();
       this.rand = rng(7);
       this.theme = "day";
@@ -140,11 +152,13 @@
 
       this.drawCelestial(ctx, pal, world.t);
       for (const a of world.ambient) this.drawAmbientCloud(ctx, a, pal);
-      this.drawLand(ctx, pal, x0, x1, y1, world.t);
+      this.drawLand(ctx, pal, x0, x1, y1, world);
 
       const players = [...world.players.values()].sort((a, b) => a.y - b.y);
       for (const p of players) this.drawShadow(ctx, p, pal);
       this.updateRain(world, dt);
+      this.updateVapor(world, dt);
+      this.drawVapor(ctx, pal);
       this.drawRain(ctx, pal);
       for (const p of players) this.drawPlayerCloud(ctx, p, pal);
       for (const p of players) this.drawTag(ctx, p, pal);
@@ -208,8 +222,9 @@
       ctx.restore();
     }
 
-    drawLand(ctx, pal, x0, x1, y1, t) {
+    drawLand(ctx, pal, x0, x1, y1, world) {
       const s = this.scenery;
+      const t = world.t;
       const poly = (pts, color, bottom) => {
         ctx.fillStyle = color;
         ctx.beginPath();
@@ -233,6 +248,7 @@
       ctx.lineTo(x1, y1);
       ctx.closePath();
       ctx.fill();
+      this.drawWetGround(ctx, pal, world, y1);
 
       // Lake
       const lake = ZONES.find((z) => z.id === "lake");
@@ -264,6 +280,13 @@
         ctx.lineTo(f.x, f.y + f.h);
         ctx.closePath();
         ctx.fill();
+        const fw = V.world.wetnessAt(world, f.x + f.w / 2);
+        if (fw > 0.01) {
+          ctx.globalAlpha = Math.min(0.75, fw * 0.8);
+          ctx.fillStyle = pal.lush;
+          ctx.fill();
+          ctx.globalAlpha = 1;
+        }
         if (f.rows) {
           ctx.strokeStyle = "rgba(0,0,0,0.08)";
           ctx.lineWidth = 1.5;
@@ -333,6 +356,82 @@
       }
     }
 
+    // Wet strips darken the soil (smoothly, via one horizontal gradient) and puddles collect where it's soaked.
+    drawWetGround(ctx, pal, world, y1) {
+      const g = world.ground;
+      if (!g.some((v) => v > 0.005)) return;
+      const cw = V.world.CELL_W;
+      const grad = ctx.createLinearGradient(0, 0, W, 0);
+      for (let i = 0; i < g.length; i++) {
+        const v = (g[Math.max(0, i - 1)] + 2 * g[i] + g[Math.min(g.length - 1, i + 1)]) / 4;
+        grad.addColorStop((i * cw + cw / 2) / W, `rgba(${pal.wet}, ${(v * pal.wetAlpha).toFixed(3)})`);
+      }
+      ctx.fillStyle = grad;
+      // Fade the soak in and out vertically around where rain lands (HORIZON+30 … HORIZON+150).
+      const top = HORIZON - 6;
+      const bottom = HORIZON + 230;
+      const slice = 6;
+      for (let y = top; y < bottom; y += slice) {
+        const mid = y + slice / 2;
+        ctx.globalAlpha = mid < HORIZON + 40 ? (mid - top) / 46 : mid < HORIZON + 140 ? 1 : Math.max(0, 1 - (mid - HORIZON - 140) / 90);
+        ctx.fillRect(0, y, W, slice + 0.5);
+      }
+      ctx.globalAlpha = 1;
+      for (const pd of this.scenery.puddles) {
+        const v = V.world.wetnessAt(world, pd.x);
+        if (v <= pd.t) continue;
+        const k = Math.min(1, (v - pd.t) / 0.3);
+        ctx.globalAlpha = 0.85 * k;
+        ctx.fillStyle = pal.puddle;
+        ctx.beginPath();
+        ctx.ellipse(pd.x, pd.y, pd.r * k, pd.r * 0.28 * k, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 0.5 * k;
+        ctx.fillStyle = "#ffffff";
+        ctx.beginPath();
+        ctx.ellipse(pd.x - pd.r * 0.3 * k, pd.y - pd.r * 0.06, pd.r * 0.3 * k, pd.r * 0.06 * k, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+    }
+
+    // Mist rises off the lake into any cloud that's soaking.
+    updateVapor(world, dt) {
+      const step = Math.min(dt, 0.05);
+      const lake = ZONES[0];
+      for (const p of world.players.values()) {
+        if (!p.soaking) continue;
+        let carry = (this.vaporCarry.get(p.id) || 0) + 26 * step;
+        while (carry >= 1) {
+          carry -= 1;
+          const x = Math.max(lake.x0 + 30, Math.min(lake.x1 - 30, p.x + (this.rand() - 0.5) * 150 * p.size));
+          this.vapor.push({ x, y: 690 + this.rand() * 25, id: p.id, age: 0, r: 5 + this.rand() * 7, wob: this.rand() * 6 });
+        }
+        this.vaporCarry.set(p.id, carry);
+      }
+      for (const v of this.vapor) {
+        const p = world.players.get(v.id);
+        v.age += step;
+        const targetY = p ? p.y + 20 * p.size : -100;
+        const targetX = p ? p.x : v.x;
+        v.y -= (130 + v.age * 90) * step;
+        v.x += (targetX - v.x) * Math.min(1, 1.4 * step) + Math.sin(v.age * 4 + v.wob) * 0.6;
+        v.r += 5 * step;
+        if (v.y <= targetY || v.age > 4) v.dead = true;
+      }
+      this.vapor = this.vapor.filter((v) => !v.dead);
+    }
+
+    drawVapor(ctx, pal) {
+      for (const v of this.vapor) {
+        const a = Math.min(1, v.age * 3) * Math.max(0, 1 - v.age / 4) * 0.45;
+        ctx.fillStyle = `rgba(${pal.vapor}, ${a.toFixed(3)})`;
+        ctx.beginPath();
+        ctx.arc(v.x, v.y, v.r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
     // Where a cloud's shadow and rain land: ground directly below, a little forward for depth.
     groundY(p) {
       return HORIZON + 40 + ((p.y - 90) / 380) * 80;
@@ -340,10 +439,10 @@
 
     drawShadow(ctx, p, pal) {
       ctx.save();
-      ctx.globalAlpha = p.connected ? 1 : 0.4;
+      ctx.globalAlpha = (p.connected ? 1 : 0.4) * this.fade(p);
       ctx.fillStyle = pal.shadow;
       ctx.beginPath();
-      ctx.ellipse(p.x, this.groundY(p), 115, 14, 0, 0, Math.PI * 2);
+      ctx.ellipse(p.x, this.groundY(p), 115 * p.size, 14 * p.size, 0, 0, Math.PI * 2);
       ctx.fill();
       ctx.restore();
     }
@@ -351,12 +450,12 @@
     updateRain(world, dt) {
       const step = Math.min(dt, 0.05);
       for (const p of world.players.values()) {
-        if (!p.input.rain) continue;
-        let carry = (this.rainCarry.get(p.id) || 0) + 110 * step;
+        if (!p.raining) continue;
+        let carry = (this.rainCarry.get(p.id) || 0) + 110 * p.size * step;
         const gy = this.groundY(p);
         while (carry >= 1) {
           carry -= 1;
-          this.drops.push({ x: p.x + (this.rand() - 0.5) * 190, y: p.y + 18, vx: p.vx * 0.25, vy: 520 + this.rand() * 220, gy: gy - 12 + this.rand() * 24, color: p.color });
+          this.drops.push({ x: p.x + (this.rand() - 0.5) * 190 * p.size, y: p.y + 18 * p.size, vx: p.vx * 0.25, vy: 520 + this.rand() * 220, gy: gy - 12 + this.rand() * 24, color: p.color });
         }
         this.rainCarry.set(p.id, carry);
       }
@@ -395,7 +494,9 @@
     drawPlayerCloud(ctx, p, pal) {
       ctx.save();
       ctx.translate(p.x, p.y);
-      ctx.globalAlpha = p.connected ? 1 : 0.45;
+      const alpha = (p.connected ? 1 : 0.45) * this.fade(p);
+      ctx.globalAlpha = alpha;
+      ctx.scale(p.size, p.size);
       const tilt = Math.max(-0.08, Math.min(0.08, p.vx / 4000));
       ctx.rotate(tilt);
 
@@ -430,7 +531,7 @@
       ctx.globalAlpha *= 0.55;
       ctx.fillStyle = belly;
       ctx.fill();
-      ctx.globalAlpha = p.connected ? 1 : 0.45;
+      ctx.globalAlpha = alpha;
 
       // Rolling bands sweep around the tube to sell the "volutus" tumble.
       ctx.clip();
@@ -449,6 +550,11 @@
       ctx.restore();
     }
 
+    // Spent clouds thin out to a wisp until they find the lake again.
+    fade(p) {
+      return 0.4 + 0.6 * Math.min(1, p.water / 0.15);
+    }
+
     drawTag(ctx, p, pal) {
       const label = p.connected ? p.name : `${p.name} (away)`;
       ctx.save();
@@ -457,10 +563,19 @@
       const tw = ctx.measureText(label).width;
       const w = tw + 34;
       const x = p.x - w / 2;
-      const y = p.y - 84;
+      const y = p.y - 34 - 50 * p.size;
       ctx.fillStyle = pal.tagBg;
       ctx.beginPath();
       ctx.roundRect(x, y, w, 26, 13);
+      ctx.fill();
+      // Water gauge under the name.
+      ctx.fillStyle = pal.tagBg;
+      ctx.beginPath();
+      ctx.roundRect(x + 8, y + 29, w - 16, 6, 3);
+      ctx.fill();
+      ctx.fillStyle = p.water <= V.world.EMPTY ? "#f87171" : p.color;
+      ctx.beginPath();
+      ctx.roundRect(x + 9, y + 30, Math.max(4, (w - 18) * p.water), 4, 2);
       ctx.fill();
       ctx.fillStyle = p.color;
       ctx.beginPath();

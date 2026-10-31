@@ -18,6 +18,7 @@
     keyboard: false,
     keys: new Set(),
     wakeLock: null,
+    waterSent: new Map(),
   };
 
   function $(id) {
@@ -66,6 +67,7 @@
       return;
     }
     sendTo(id, { t: "you", name: p.name, color: p.color, colorName: p.colorName });
+    state.waterSent.delete(id);
     if (id !== KEYBOARD_ID && state.joinOpen && realPlayers().length === 1) setJoinOpen(false);
   }
 
@@ -88,6 +90,20 @@
         return;
     }
     renderRoster();
+  }
+
+  // Phones show a water gauge; send it in 5% steps, at most ~6×/s per phone.
+  function syncWater(now) {
+    for (const p of state.world.players.values()) {
+      if (p.id === KEYBOARD_ID || !p.connected) continue;
+      const v = Math.round(p.water * 20) / 20;
+      const empty = p.water <= Wd.EMPTY;
+      const key = `${v}|${p.soaking}|${empty}`;
+      const sent = state.waterSent.get(p.id);
+      if (sent && (sent.key === key || now - sent.at < 160)) continue;
+      sendTo(p.id, { t: "water", v, soaking: p.soaking, empty });
+      state.waterSent.set(p.id, { key, at: now });
+    }
   }
 
   // ---------- Keyboard cloud (try it without a phone) ----------
@@ -223,6 +239,7 @@
     const before = state.world.players.size;
     Wd.step(state.world, dt);
     if (state.world.players.size !== before) renderRoster();
+    syncWater(now);
     state.renderer.render(state.world, dt);
     requestAnimationFrame(frame);
   }

@@ -87,6 +87,9 @@
         el.meColor.textContent = `${msg.colorName} cloud`;
         document.documentElement.style.setProperty("--me", msg.color);
         break;
+      case "water":
+        renderWater(msg);
+        break;
       case "host-left":
         showOverlay("The big screen went away. Waiting for it to come back…");
         break;
@@ -97,6 +100,15 @@
         showJoin("That sky is full — 8 clouds max.");
         break;
     }
+  }
+
+  function renderWater({ v, soaking, empty }) {
+    const pct = Math.max(0, Math.min(1, Number(v) || 0)) * 100;
+    el.gaugeFill.style.width = `${pct}%`;
+    el.gauge.classList.toggle("is-soaking", Boolean(soaking));
+    el.gauge.classList.toggle("is-empty", Boolean(empty));
+    el.rainBtn.classList.toggle("is-empty", Boolean(empty));
+    el.rainLabel.textContent = empty ? "Empty — float over the lake" : soaking ? "Soaking up water…" : "Hold to rain";
   }
 
   function handleStatus(status) {
@@ -272,7 +284,7 @@
     [
       "joinScreen", "playScreen", "joinForm", "roomInput", "nameInput", "joinError", "meSwatch", "meName", "meColor", "meRoom",
       "status", "leaveBtn", "stickArea", "stickBase", "stickKnob", "stickHint", "tiltBtn", "tiltLabel", "rainBtn", "overlay",
-      "overlayText", "overlayBtn",
+      "overlayText", "overlayBtn", "gauge", "gaugeFill", "rainLabel",
     ].forEach((id) => (el[id] = $(id)));
 
     el.roomInput.addEventListener("input", () => {

@@ -23,10 +23,15 @@ Checked-in snapshot of working context for Volutus. If you're an agent picking t
 - Every server-initiated close is preceded by `{t:"bye", code, reason}` (4001 replaced, 4004 no host, 4009 full,
   4400 bad request) because the close handshake can be slow; `js/net.js` treats these as final (no auto-retry).
 - Protocol: player→host `{t:"in", x, y, rain}` arrives as `{t:"msg", from, d}`; relay→host `welcome{players}`,
-  `join{id,name}`, `leave{id}`; host→relay `{to: id|"*", d}`; host→player `you{name,color,colorName}`, `full`;
+  `join{id,name}`, `leave{id}`; host→relay `{to: id|"*", d}`; host→player `you{name,color,colorName}`, `water{v,soaking,empty}` (5% steps, throttled), `full`;
   relay→player `welcome`, `host-left`, `host-back`.
 - Logical world is 1600×900 (`HORIZON` 640, clouds fly between `SKY_TOP` and `SKY_BOTTOM`), scaled to fit; the
   backdrop fills letterbox margins. `ZONES` (lake, farms, forest, town) are where future challenges hang.
+- **Weather** (`js/world.js`): each cloud has `water` 0..1 (start 0.6); over the lake it soaks (`SOAK_RATE`, faster
+  at low altitude), raining drains `RAIN_RATE` and is ignored at `EMPTY`. `size` eases toward `sizeFor(water)` and
+  scales drawing. `world.ground` is wetness 0..1 per 20 px strip (`CELL_W`); rain wets the strips under the cloud
+  (not over the lake), everything dries at `DRY_RATE`. Use `p.raining`/`p.soaking` (derived) — not `input.rain` —
+  for effects. `zoneWetness(world, id)` is the hook for milestone 3 challenges.
 - Phone ids persist in localStorage `volutus_player_id` so a reload reclaims the same cloud; disconnected clouds
   linger `DISCONNECT_GRACE` (30 s).
 - Relay URL: `DEFAULT_RELAY` in `js/util.js`; `?relay=ws://…` overrides (stored in `volutus_relay`, forwarded to

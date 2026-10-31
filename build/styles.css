@@ -689,6 +689,36 @@ body.pad {
   color: var(--ink-soft);
 }
 
+.gauge {
+  margin-top: 6px;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--line);
+  overflow: hidden;
+}
+
+.gauge__fill {
+  height: 100%;
+  width: 60%;
+  border-radius: 3px;
+  background: var(--me);
+  transition: width 0.25s ease-out;
+}
+
+.gauge.is-soaking .gauge__fill {
+  animation: soak 0.9s ease-in-out infinite alternate;
+}
+
+.gauge.is-empty {
+  background: rgba(248, 113, 113, 0.35);
+}
+
+@keyframes soak {
+  to {
+    filter: brightness(1.35);
+  }
+}
+
 .stick-area {
   position: relative;
   flex: 1;
@@ -804,6 +834,16 @@ body.pad {
   background: var(--me);
   color: #0f172a;
   transform: scale(0.97);
+}
+
+.rain-btn.is-empty {
+  opacity: 0.6;
+  font-size: 0.95rem;
+}
+
+.rain-btn.is-empty.is-active {
+  background: var(--glass);
+  color: var(--ink);
 }
 
 .overlay {

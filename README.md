@@ -15,6 +15,13 @@ input to the big screen in real time.
 2. Scan the QR code with each phone — or open `kashikoi.github.io/Volutus/play.html` and type the 4-letter room code.
 3. **Drag** anywhere on the pad to steer, or tap **Tilt** and steer by tilting the phone. **Hold to rain.**
 
+### Weather
+
+Every cloud carries water (the gauge under its name, and on your phone). Float over the **lake** to soak up more —
+mist rises into you, faster the lower you fly. **Raining** drains it and your cloud shrinks; when it's empty it thins
+to a wisp and can't rain until it refills. Rain soaks the ground below: soil darkens, fields turn green, puddles
+collect — and everything slowly dries out again, so keep it coming.
+
 No phone handy? Press <kbd>K</kbd> on the Mac to fly a cloud with the arrow keys / WASD and Space to rain.
 
 Up to 8 clouds share a sky. If a phone locks or drops, its cloud waits (faded, "away") for 30 seconds before
@@ -23,7 +30,7 @@ drifting off; reopening the page picks the same cloud back up.
 ## Roadmap
 
 - [x] **Milestone 1 — the sky:** rooms, QR pairing, steering by drag or tilt, rain, Day / Twilight / Night / Random.
-- [ ] **Milestone 2 — weather:** clouds soak up water over the lake, shrink as they rain, and fade when spent; rain wets the ground.
+- [x] **Milestone 2 — weather:** clouds soak up water over the lake, shrink as they rain, and fade when spent; rain wets the ground, which slowly dries.
 - [ ] **Milestone 3 — co-op challenges:** "Water the farms before noon", "Put out the forest fire", "Keep the town dry", with a shared score.
 - [ ] **Milestone 4 — atmosphere:** wind/rain/thunder sound, and a day → night cycle the host can scrub from a phone.
 

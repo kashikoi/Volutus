@@ -2,7 +2,7 @@
 (function (root) {
   "use strict";
 
-  const APP_VERSION = "2026.10.31.1";
+  const APP_VERSION = "2026.10.31.2";
   const DEFAULT_RELAY = "wss://volutus-relay.nimbus-sync.workers.dev";
   const RELAY_KEY = "volutus_relay";
   const THEME_KEY = "volutus_theme";

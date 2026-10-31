@@ -7,12 +7,12 @@
   <meta name="theme-color" content="#0f172a" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <link rel="icon" type="image/svg+xml" href="icon.svg?v=2026.10.31.1" />
-  <link rel="apple-touch-icon" href="icon.svg?v=2026.10.31.1" />
+  <link rel="icon" type="image/svg+xml" href="icon.svg?v=2026.10.31.2" />
+  <link rel="apple-touch-icon" href="icon.svg?v=2026.10.31.2" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" />
-  <link rel="stylesheet" href="styles.css?v=2026.10.31.1" />
+  <link rel="stylesheet" href="styles.css?v=2026.10.31.2" />
   <script>
     (function () {
       try {
@@ -60,6 +60,7 @@
         <div>
           <div class="me__name" id="meName">Cloud</div>
           <div class="me__sub"><span id="meColor">Joining</span> · room <span class="mono" id="meRoom"></span></div>
+          <div class="gauge" id="gauge" title="Water"><div class="gauge__fill" id="gaugeFill"></div></div>
         </div>
       </div>
       <div class="status status--compact" id="status" data-state="connecting"><span class="status__dot"></span></div>
@@ -80,7 +81,7 @@
       </button>
       <button type="button" class="rain-btn" id="rainBtn" aria-pressed="false">
         <svg viewBox="0 0 48 48" aria-hidden="true"><path d="M12 22a9 9 0 0 1 17-5 7 7 0 0 1 9 7 6 6 0 0 1-6 6H14a6 6 0 0 1-2-8Z" fill="currentColor"/><path d="M16 35l-2 5M24 35l-2 5M32 35l-2 5" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg>
-        <span>Hold to rain</span>
+        <span id="rainLabel">Hold to rain</span>
       </button>
     </footer>
 
@@ -92,8 +93,8 @@
     </div>
   </main>
 
-  <script src="js/util.js?v=2026.10.31.1"></script>
-  <script src="js/net.js?v=2026.10.31.1"></script>
-  <script src="js/controller.js?v=2026.10.31.1"></script>
+  <script src="js/util.js?v=2026.10.31.2"></script>
+  <script src="js/net.js?v=2026.10.31.2"></script>
+  <script src="js/controller.js?v=2026.10.31.2"></script>
 </body>
 </html>
